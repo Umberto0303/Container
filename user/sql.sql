@@ -1,0 +1,5 @@
+ALTER TABLE users
+ADD COLUMN surname varchar(50) UNIQUE;
+/etc/apt/keyrings/docker.gpg
+A812B48F21DA87DC0F662D2D217241C34EE674E4
+
