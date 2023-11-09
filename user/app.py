@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,make_response
 from flask_sqlalchemy import SQLAlchemy 
 
 #################################UTENTI#############################
@@ -7,15 +7,17 @@ app = Flask(__name__)
 # Configura la connessione al database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@dbutenti/db_postgres'
 
-# DB
-db=SQLAlchemy(app)
+
+db = SQLAlchemy(app)
+
 class User(db.Model):
     __tablename__ = 'utenti'
     id = db.Column(db.Integer, primary_key=True)
-    name =db.Column(db.String(50), unique=True)
-    surname = db.Column(db.String(50)) 
+    name = db.Column(db.String(50), nullable=False)  # Cambiato da 'unique=True'
+    surname = db.Column(db.String(50), nullable=False)  # Cambiato da 'unique=True'
+
     def json(self):
-         return {'Id':self.id,'name':self.name,'surname':self.surname}
+        return {'id': self.id, 'name': self.name, 'surname': self.surname}
 with app.app_context():
      db.create_all()
 
@@ -52,7 +54,18 @@ def get_users():
         user_list.append(user_data)
 
     # Restituisci la lista di utenti come risposta JSON
-    return jsonify(user_list), 200        
+    return jsonify(user_list), 200       
+ 
+@app.route('/get_id/<int:id>', methods=['GET'])
+def get_id(id):
+    try:
+        user = User.query.filter_by(id=id).first()
+        if user:
+            return make_response(jsonify({'utente': user.json()}), 200)
+        return make_response(jsonify({'message': 'user not found'}), 404)
+    except:
+        return make_response(jsonify({'message': 'error getting the user'}), 500)
+
 
 #DELETE
 @app.route('/delete_user/<int:id>', methods=['DELETE'])

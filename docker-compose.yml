@@ -7,16 +7,10 @@ services:
     depends_on:
       - dbutenti
       
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_ROOT_PASSWORD: postgres
-      POSTGRES_DB: db_postgres
     networks:
       - mynetwork
     restart: always
-    links:
-      - prestiti:prestitidb
+
 ################################################
   libri:
     build: ./book
@@ -24,39 +18,30 @@ services:
       - '5000:5000'
     depends_on:
       - dbLIBRI
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_ROOT_PASSWORD: postgres
-      POSTGRES_DB: dbLIBRI
     networks:
       - mynetwork
     restart: always
-    links:
-      - prestiti:prestitidb
-#####################################################################à
+   
   prestiti:  # Aggiungi il servizio 'prestiti'
     build: ./prestiti  # Sostituisci con la directory corretta
     ports:
       - '6000:6000'  # Porta di esposizione del servizio prestiti
     depends_on:
       - dbprestiti
-      - dbLIBRI
-      - dbutenti
-    environment:
-      MYSQL_ROOT_PASSWORD: mysql
-      MYSQL_USER: mysql
-      MYSQL_PASSWORD: mysql
-      MYSQL_DATABASE: mysql
     networks:
       - mynetwork
     restart: always
+    links:
+      - dbprestiti:dbprestiti
 
-#############################ÀÀ    
+
+  
+
+#############################   
   dbLIBRI:
     image: postgres:latest
     volumes:
-      - pgdataLIBRI:/Scrivania/container
+      -  pgdataLIBRI:/var/lib/postgresql/data
     ports:
       - '13002:13002'
     environment:
@@ -71,7 +56,7 @@ services:
   dbutenti:
     image: postgres:latest
     volumes:
-      - pgdata:/Scrivania/container
+      -  pgdata:/var/lib/postgresql/data
     ports:
       - '13001:13001'
     environment:
@@ -92,22 +77,15 @@ services:
       MYSQL_PASSWORD: mysql
       MYSQL_DATABASE: mysql
     ports:
-      - '13000:13000'
+      - '13003:13003'
     networks:
       - mynetwork
     restart: always
 
-
-
-
-
-
-
-
+  
 
 networks:
   mynetwork:
 volumes:
   pgdata: {} 
   pgdataLIBRI : {}
- 

@@ -11,6 +11,7 @@ COPY app.py .
 RUN pip install -r requirements.txt
 
 
+
 # Espone la porta su cui Flask ascolterà
 EXPOSE 6000
 

@@ -1,70 +1,84 @@
-from flask import Flask, request, jsonify
-#from flask_mysqldb import MySQL
+from flask import Flask, request, jsonify,make_response
 from flask_sqlalchemy import SQLAlchemy
-import pymysql
-pymysql.install_as_MySQLdb()
+from flask import abort
+import mysql.connector
+
 app = Flask(__name__)
-db=SQLAlchemy(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://mysql:mysql@dbprestiti:13003/mysql'
 
+db = SQLAlchemy(app)
 
-###############LIBRI
+class Prestito(db.Model):
+    __tablename__ = 'prestiti'
+    id = db.Column(db.Integer, primary_key=True)
+    IdCliente = db.Column(db.Integer)
+    IdLibro = db.Column(db.Integer)
 
-POSTGRES_USER= 'postgres'
-POSTGRES_PASSWORD= 'postgres'
-POSTGRES_DB= 'db_postgresLIBRI'
-POSTGRES_HOST= 'db_libri'
-POSTGRES_PORT='13002'
-SQLALCHEMY_DATABASE_URI_USERS=f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+    def json(self):
+        return {'id': self.id, 'IdCliente': self.IdCliente, 'IdLibro': self.IdLibro}
+     
 
-##########UTENTI
+def create_db_connection():
+    connection = None
+    try:
+        connection = mysql.connector.connect(
+            host="dbprestiti",  # Docker Compose esegue i servizi in rete locale
+            user="mysql",  # Nome utente definito nel tuo servizio dbprestiti
+            passwd="mysql",  # Password definita nel tuo servizio dbprestiti
+            database="mysql"  # Nome del database definito nel tuo servizio dbprestiti
+        )
+        print("Connessione al database MySQL riuscita")
+    except Exception as e:
+        print(f"L'errore '{e}' è accaduto")
+    return connection
+# Funzione per verificare l'esistenza di un cliente
 
-POSTGRES_USER = 'postgres'
-POSTGRES_PASSWORD = 'postgres'
-POSTGRES_DB = 'db_postgres'
-POSTGRES_HOST = 'dbutenti'
-POSTGRES_PORT = '13001'
-SQLALCHEMY_DATABASE_URI_USERS = f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+@app.route('/add', methods=['POST'])
+def aggiungi_prestito_verificato():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor() 
 
-############PRESTITI
+        data = request.get_json()
+        IdCliente = data['IdCliente']
+        IdLibro = data['IdLibro']
+        
+        if not controllo_cliente(IdCliente):
+            return jsonify({'error': 'Cliente non valido'}), 401
+        if not controllo_libro(IdLibro):
+            return jsonify({'error': 'Libro non valido'}), 401
+        insert_query = "INSERT INTO prestiti (IdCliente, IdLibro) VALUES (%s, %s)"
+        values = (IdCliente, IdLibro)
+        cursor.execute(insert_query, values)
 
-MYSQL_ROOT_PASSWORD = 'mysql'
-MYSQL_USER = 'mysql'
-MYSQL_PASSWORD = 'mysql'
-MYSQL_DATABASE = 'mysql'
-MYSQL_HOST = 'dbprestiti'
-MYSQL_PORT = '13000'
-SQLALCHEMY_DATABASE_URI_PRESTITI = f'mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}'
+        conn.commit()
+        cursor.close()
+        conn.close()
 
+        return jsonify({'message': 'Prestito aggiunto con successo'}), 201
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 401
 
+def controllo_cliente(IdCliente):
+    try:
+        response = request.get(f'http://localhost:4000/get_id/{IdCliente}')
+        if response.status_code == 200:
+            data = response.json()
+            return data['id']
+    except Exception as e:
+     print(f"Errore durante il controllo del cliente: {str(e)}")
+    return False
 
-# Configura la connessione al database MySQL
-#app.config['MYSQL_HOST'] = 'dbprestiti'  # Nome del servizio Docker Compose del database MySQL
-#app.config['MYSQL_USER'] = 'mysql'
-#app.config['MYSQL_PASSWORD'] = 'mysql'
-#app.config['MYSQL_DB'] = 'mysql'
-mysql = SQLAlchemy(app)
-
-# API per ottenere la lista dei prestiti
-@app.route('/prestiti', methods=['GET'])
-def get_prestiti():
-    cur = mysql.connection.cursor()
-    cur.execute('SELECT * FROM prestiti')
-    prestiti = cur.fetchall()
-    cur.close()
-    return jsonify(prestiti)
-
-# API per aggiungere un prestito
-@app.route('/prestiti', methods=['POST'])
-def add_prestito():
-    data = request.get_json()
-    nome = data['nome']
-    libro = data['libro']
-    cur = mysql.connection.cursor()
-    cur.execute('INSERT INTO prestiti (nome, libro) VALUES (%s, %s)', (nome, libro))
-    mysql.connection.commit()
-    cur.close()
-    return jsonify({'message': 'Prestito aggiunto con successo'})
-
+# Funzione per verificare l'esistenza di un libro
+def controllo_libro(IdLibro):
+    try:
+        response = request.get(f'http://localhost:5000/get_books/{IdLibro}')
+        if response.status_code == 200:
+            data = response.json()
+            return data['id']
+    except Exception as e:
+        return False
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5003)
+    app.run(debug=True, host='0.0.0.0', port=6000)
+ 
