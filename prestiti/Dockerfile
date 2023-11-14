@@ -1,7 +1,7 @@
 # Usa l'immagine di base di Python
 FROM python:3.8-slim-buster
 
-# Imposta la directory di lavoro nell'immagine
+# Imposta la directory dsi lavoro nell'immagine
 WORKDIR /app
 
  # Copia il tuo codice sorgente nell'immagine

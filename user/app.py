@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 #################################UTENTI#############################
 app = Flask(__name__)
-
+ 
 # Configura la connessione al database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@dbutenti/db_postgres'
 
@@ -56,15 +56,15 @@ def get_users():
     # Restituisci la lista di utenti come risposta JSON
     return jsonify(user_list), 200       
  
+
 @app.route('/get_id/<int:id>', methods=['GET'])
 def get_id(id):
-    try:
-        user = User.query.filter_by(id=id).first()
-        if user:
-            return make_response(jsonify({'utente': user.json()}), 200)
-        return make_response(jsonify({'message': 'user not found'}), 404)
-    except:
-        return make_response(jsonify({'message': 'error getting the user'}), 500)
+    user = User.query.get(id)
+    if user:
+        return '', 200
+    else:
+        return '', 404
+
 
 
 #DELETE
