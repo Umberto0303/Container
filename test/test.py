@@ -37,6 +37,8 @@ try:
 except Exception as e:
     logging.exception("error")
 
+
+
 print("\nTEST-DELETE_USER:")
 print(f"Status code: {response_delete_user.status_code}")
 print(f"Response: {response_delete_user.json()}")
@@ -53,3 +55,6 @@ except Exception as e:
 print("\nTEST-UPDATE_USER:")
 print(f"Status code: {response_update_user.status_code}")
 print(f"Response: {response_update_user.json()}")
+
+
+
