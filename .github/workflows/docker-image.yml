@@ -28,6 +28,5 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: book/
-          file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/clockbox:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{github.event.repository.name}}:app
