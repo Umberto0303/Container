@@ -7,12 +7,14 @@ appLIBRI.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@dbL
 
 db_libri = SQLAlchemy(appLIBRI)
 
+
+
 class Book(db_libri.Model):
     __tablename__ = 'libri'
     id = db_libri.Column(db_libri.Integer, primary_key=True)
     title = db_libri.Column(db_libri.String(100), nullable=False)
     author = db_libri.Column(db_libri.String(100))
-   
+    
     def json(self):
         return {'id': self.id, 'title': self.title, 'author': self.author}
 
@@ -27,9 +29,11 @@ def add_book():
         return jsonify({"error": "The 'title' field is required."}), 400
 
     try:
-        new_book = Book(title=data['title'], author=data.get('author'))  # Author è un campo opzionale
+        new_book = Book(title=data['title'], author=data.get('author'))  
         db_libri.session.add(new_book)
         db_libri.session.commit()
+
+
         return jsonify({"message": "Libro aggiunto"}), 201
 
     except Exception as e:

@@ -6,12 +6,10 @@ services:
       - '4000:4000'
     depends_on:
       - dbutenti
-      
     networks:
       - mynetwork
     restart: always
 
-################################################
   libri:
     build: ./book
     ports:
@@ -34,9 +32,7 @@ services:
     restart: always
 
 
-  
-
-#############################   
+   
   dbLIBRI:
     image: postgres:latest
     volumes:
@@ -82,7 +78,6 @@ services:
     restart: always
 
   
-
 networks:
   mynetwork:
 volumes:
