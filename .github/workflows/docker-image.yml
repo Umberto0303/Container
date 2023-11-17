@@ -1,9 +1,11 @@
 name: ci
 
 on:
+  workflow_dispatch:
+    
   push:
     branches:
-      - "main"
+      - "master"
 
 jobs:
   build:
@@ -25,7 +27,6 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: book/
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/clockbox:latest
