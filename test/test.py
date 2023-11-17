@@ -25,6 +25,10 @@ print("\nTEST-GET_USERS:")
 print(f"Status code: {response_get_users.status_code}")
 print(f"Response: {response_get_users.json()}")
 
+
+
+
+
 # TEST-DELETE_USER
 # Supponendo che l'utente creato nel test ADD_USER abbia ID 1
 user_id_to_delete = 1
