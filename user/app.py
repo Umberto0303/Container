@@ -1,5 +1,10 @@
 from flask import Flask, request, jsonify,make_response
 from flask_sqlalchemy import SQLAlchemy 
+import logging
+import os
+
+log_file_path = os.path.abspath('app.log')
+logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
 #################################UTENTI#############################
 app = Flask(__name__)
@@ -24,18 +29,21 @@ with app.app_context():
 #POST
 @app.route('/add_user', methods=['POST'])
 def add_user():
-        data = request.get_json()
-        
-        if 'name'not in data or 'surname' not in data:   # Assicurati che entrambi i campi siano presenti           
-            return jsonify({"error": "Both 'name' and 'surname' fields are required."})
-        try:
-            new_users=User(name=data['name'],surname=data['surname'])
-            db.session.add(new_users)
-            db.session.commit()
-            return jsonify({"message": "utente aggiunto"}),200
+    data = request.get_json()
 
-        except Exception as e:
-            return jsonify({"message": str(e)}),500
+    if 'name' not in data or 'surname' not in data:
+        return jsonify({"error": "Both 'name' and 'surname' fields are required."}), 400
+
+    try:
+        new_user = User(name=data['name'], surname=data['surname'])
+        db.session.add(new_user)
+        db.session.commit()
+        logging.info("Utente aggiunto: %s %s", data['name'], data['surname'])
+        return jsonify({"message": "Utente aggiunto"}), 200
+
+    except Exception as e:
+        logging.error("Errore durante l'aggiunta dell'utente: %s", str(e))
+        return jsonify({"error": "Internal Server Error"}), 500
 
    #GET     
 @app.route('/get_users', methods=['GET'])
@@ -89,8 +97,8 @@ def update_user(id):
     data = request.get_json()
 
     if 'name' not in data or 'surname' not in data:
-        return jsonify({"error": "error name not found"})
-
+        logging.error("Campi name o surname vuoti")
+        return jsonify({"error": "Campi name o surname vuoti"})
     try:
         user = User.query.get(id)
 

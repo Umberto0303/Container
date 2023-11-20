@@ -1,20 +1,11 @@
 from flask import Flask, request,jsonify,make_response
 from flask_sqlalchemy import SQLAlchemy
 import requests
-from confluent_kafka import Consumer, KafkaError
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://mysql:mysql@dbprestiti/mysql'
 
 db = SQLAlchemy(app)
 
-
-consumer = Consumer({
-    'bootstrap.servers': 'kafka:9092',  # Utilizza il nome del servizio Kafka come hostname
-    'group.id': 'prestiti_notification_consumer',
-    'auto.offset.reset': 'earliest'
-})
-
-consumer.subscribe(['notification_topic'])
 
 
 class Prestito(db.Model):
