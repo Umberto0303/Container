@@ -1,14 +1,10 @@
-# Usa un'immagine di Python ufficiale come base
-FROM python:3.8
+FROM python:3.6-slim-buster
 
-# Imposta il work directory nell'immagine
-WORKDIR /app/notifiche
+WORKDIR /notifiche
 
-# Copia i file necessari nell'immagine
+COPY notifiche/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
-# Installa le dipendenze
-RUN pip install --no-cache-dir -r /app/notifiche/requirements.txt
+COPY notifiche/notifiche.py ./
 
-# Comando di avvio dell'applicazione
-CMD ["python", "notifiche.py"]
+CMD ["python3", "notifiche.py"]

@@ -77,27 +77,32 @@ services:
       - mynetwork
     restart: always
 
+ # rabbitmq:
+#   container_name: rabbitmq
+#   image: rabbitmq:3-management
+#   ports:
+#     - "5672:5672"
+#     - "15672:15672"
+#   environment:
+#     - RABBITMQ_DEFAULT_USER=user
+#     - RABBITMQ_DEFAULT_PASS=password
 
-  consumer:
-      build:
-        context: .
-        dockerfile: ./notifiche/Dockerfile 
-      networks:
-        - mynetwork
-      restart: always
-  
-  rabbitmq:
-      image: 'rabbitmq:3-management'
-      ports:
-        - '15672:15672'
-        - '5672:5672'
-      networks:
-        - mynetwork
-      restart: always
-
+# notifiche:
+#   build:
+#     context: .
+#     dockerfile: notifiche/Dockerfile
+#   depends_on:
+#     - rabbitmq
+#   volumes:
+#     - rabbitmq_data:/var/lib/rabbitmq
+#   environment:
+#     - RABBITMQ_HOST=rabbitmq
+#     - RABBITMQ_PORT=5672
+#     - RABBITMQ_USER=user
+#     - RABBITMQ_PASSWORD=password
 networks:
   mynetwork:
 volumes:
   pgdata: {} 
   pgdataLIBRI : {}
-
+  rabbitmq_data: {}
