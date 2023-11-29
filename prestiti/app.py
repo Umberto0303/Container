@@ -1,11 +1,13 @@
 from flask import Flask, request,jsonify,make_response
 from flask_sqlalchemy import SQLAlchemy
 import requests
+import pika
+import logging
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://mysql:mysql@dbprestiti/mysql'
 
 db = SQLAlchemy(app)
-
 
 
 class Prestito(db.Model):
@@ -13,35 +15,25 @@ class Prestito(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     IdCliente = db.Column(db.Integer)
     IdLibro = db.Column(db.Integer)
-
+    disponibile = db.Column(db.Boolean, default=False)  # Aggiungi il campo 'disponibile'
     def json(self):
-        return {'id': self.id, 'IdCliente': self.IdCliente, 'IdLibro': self.IdLibro}
+        return {'id': self.id, 'IdCliente': self.IdCliente, 'IdLibro': self.IdLibro, 'disponibile': self.disponibile}
 with app.app_context():
      db.create_all()
 
-@app.route('/PROVA', methods=['POST'])
-def add_loan():
-    try:
-        data = request.get_json()
+# Connessione a RabbitMQ
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host='rabbitmq'))  # Usa l'hostname del servizio RabbitMQ nel tuo file docker-compose
+channel = connection.channel()
 
-        if 'IdCliente' not in data or 'IdLibro' not in data:
-            return jsonify({"error": "Both 'IdCliente' and 'IdLibro' fields are required."})
+# Creazione di una coda 'notifiche'
+channel.queue_declare(queue='notifiche')
 
-        new_loan = Prestito(IdCliente=data['IdCliente'], IdLibro=data['IdLibro'])
-        db.session.add(new_loan)
-        db.session.commit()
-        return jsonify({"message": "Prestito aggiunto"}), 200
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")  # Stampa l'errore nel log
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/get_loans', methods=['GET'])
 def get_loans():
-    # Esegui una query per ottenere tutti i prestiti dal database
+    logging.info('GET /get_loans')
     loans = Prestito.query.all()
-
-    # Crea una lista di dizionari contenenti le informazioni dei prestiti
     loan_list = []
     for loan in loans:
         loan_data = {
@@ -50,67 +42,46 @@ def get_loans():
             'IdLibro': loan.IdLibro,
         }
         loan_list.append(loan_data)
-
-    # Restituisci la lista di prestiti come risposta JSON
+        logging.info(f'Loan data: {loan_data}')
     return jsonify(loan_list), 200
-
-@app.route('/delete_loan/<int:id>', methods=['DELETE'])
-def delete_loan(id):
-    try:
-        # Trova il prestito nel database
-        loan = Prestito.query.get(id)
-
-        # Se il prestito non esiste, restituisci un errore
-        if loan is None:
-            return jsonify({"error": "Prestito non trovato"}), 404
-
-        # Rimuovi il prestito dal database
-        db.session.delete(loan)
-        db.session.commit()
-
-        # Restituisci un messaggio di successo
-        return jsonify({"message": "Prestito rimosso"}), 200
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")  # Stampa l'errore nel log
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/update_loan/<int:id>', methods=['PUT'])
 def update_loan(id):
+    logging.info(f'PUT /update_loan/{id}')
     try:
-        # Trova il prestito nel database
         loan = Prestito.query.get(id)
-
-        # Se il prestito non esiste, restituisci un errore
         if loan is None:
             return jsonify({"error": "Prestito non trovato"}), 404
-
-        # Ottieni i dati dal corpo della richiesta
         data = request.get_json()
-
-        # Aggiorna i campi del prestito
         if 'IdCliente' in data:
             loan.IdCliente = data['IdCliente']
         if 'IdLibro' in data:
             loan.IdLibro = data['IdLibro']
-
-        # Salva le modifiche nel database
+        if 'disponibile' in data:
+            loan.disponibile = data['disponibile']
+            if loan.disponibile:
+                notification_message = f'Il prestito {id} è ora disponibile'
+                channel.basic_publish(exchange='', routing_key='notifiche', body=notification_message)
+                print("Messaggio di notifica inviato")
         db.session.commit()
-
-        # Restituisci un messaggio di successo
         return jsonify({"message": "Prestito aggiornato"}), 200
-
     except Exception as e:
-        print(f"An error occurred: {str(e)}")  # Stampa l'errore nel log
+        logging.error(f"An error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        try:
+            if connection and connection.is_open:
+                connection.close()
+                print("Connessione RabbitMQ chiusa con successo")
+        except Exception as e:
+            print(f"Errore durante la chiusura di RabbitMQ: {str(e)}")
 
 @app.route('/add', methods=['POST'])
 def aggiungi_prestito_verificato():
-    
+    logging.info('POST /add')
     data = request.get_json()
     Id_Cliente = data['IdCliente']
     Id_Libro = data['IdLibro']
-        
         
     response = requests.get(f'http://utenti:4000/get_id/{Id_Cliente}')
     if response.status_code != 200:
@@ -121,13 +92,46 @@ def aggiungi_prestito_verificato():
         return jsonify({'message': 'Libro non trovato'}), 404
 
     try:
-        new_loan = Prestito(IdCliente=data['IdCliente'], IdLibro=data['IdLibro'])
+        new_loan = Prestito(IdCliente=data['IdCliente'], IdLibro=data['IdLibro'],disponibile=False)
         db.session.add(new_loan)
         db.session.commit()
         return jsonify({'message': 'Prestito aggiunto'}), 200
     except Exception as e:
-        print(f"An error occurred: {str(e)}")  # Log the error
+        logging.error(f"An error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/get_loan/<int:id>', methods=['GET'])
+def get_loan(id):
+    logging.info(f'GET /get_loan/{id}')
+    try:
+        loan = Prestito.query.get(id)
+        if loan is None:
+            return jsonify({"error": "Prestito non trovato"}), 404
+        loan_data = {
+            'id': loan.id,
+            'IdCliente': loan.IdCliente,
+            'IdLibro': loan.IdLibro,
+        }
+        return jsonify(loan_data), 200
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/delete_loan/<int:id>', methods=['DELETE'])
+def delete_loan(id):
+    logging.info(f'DELETE /delete_loan/{id}')
+    try:
+        loan = Prestito.query.get(id)
+        if loan is None:
+            return jsonify({"error": "Prestito non trovato"}), 404
+        db.session.delete(loan)
+        db.session.commit()
+        return jsonify({"message": "Prestito eliminato"}), 200
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=6000)

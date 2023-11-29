@@ -29,9 +29,11 @@ with app.app_context():
 #POST
 @app.route('/add_user', methods=['POST'])
 def add_user():
+    logging.info('POST /add_user')
     data = request.get_json()
 
     if 'name' not in data or 'surname' not in data:
+        logging.error("Both 'name' and 'surname' fields are required.")
         return jsonify({"error": "Both 'name' and 'surname' fields are required."}), 400
 
     try:
@@ -44,14 +46,11 @@ def add_user():
     except Exception as e:
         logging.error("Errore durante l'aggiunta dell'utente: %s", str(e))
         return jsonify({"error": "Internal Server Error"}), 500
-
    #GET     
 @app.route('/get_users', methods=['GET'])
 def get_users():
-    # Esegui una query per ottenere tutti gli utenti dal database
+    logging.info('GET /get_users')
     users = User.query.all()
-
-    # Creare una lista di dizionari contenenti i nomi e i cognomi degli utenti
     user_list = []
     for user in users:
         user_data = {
@@ -60,59 +59,60 @@ def get_users():
             'surname': user.surname
         }
         user_list.append(user_data)
-
-    # Restituisci la lista di utenti come risposta JSON
+    logging.info('User list retrieved')
     return jsonify(user_list), 200       
- 
 
 @app.route('/get_id/<int:id>', methods=['GET'])
 def get_id(id):
+    logging.info(f'GET /get_id/{id}')
     user = User.query.get(id)
     if user:
+        logging.info(f'User with id {id} found')
         return '', 200
     else:
+        logging.error(f'User with id {id} not found')
         return '', 404
+
 
 
 
 #DELETE
 @app.route('/delete_user/<int:id>', methods=['DELETE'])
 def delete_user(id):
-    # Cerca l'utente nel database
+    logging.info(f'DELETE /delete_user/{id}')
     user = User.query.get(id)
-
     if user is not None:
-        # Elimina l'utente dal database
         db.session.delete(user)
         db.session.commit()
+        logging.info(f'User with id {id} deleted')
         return jsonify({"message": "Utente eliminato con successo"}), 200
     else:
+        logging.error(f'User with id {id} not found')
         return jsonify({"error": "Utente non trovato"}), 404
 
 
-#POST 
 # PUT
 @app.route('/update_user/<int:id>', methods=['PUT'])
 def update_user(id):
+    logging.info(f'PUT /update_user/{id}')
     data = request.get_json()
-
     if 'name' not in data or 'surname' not in data:
         logging.error("Campi name o surname vuoti")
         return jsonify({"error": "Campi name o surname vuoti"})
     try:
         user = User.query.get(id)
-
         if user is not None:
             user.name = data['name']
             user.surname = data['surname']
             db.session.commit()
+            logging.info(f'User with id {id} updated')
             return jsonify({"message": "Utente aggiornato con successo"}), 200
         else:
+            logging.error(f'User with id {id} not found')
             return jsonify({"error": "Utente non trovato"}), 404
-
     except Exception as e:
+        logging.error(f'Error updating user with id {id}: {str(e)}')
         return jsonify({"message": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
