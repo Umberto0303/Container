@@ -21,13 +21,6 @@ class Prestito(db.Model):
 with app.app_context():
      db.create_all()
 
-# Connessione a RabbitMQ
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))  # Usa l'hostname del servizio RabbitMQ nel tuo file docker-compose
-channel = connection.channel()
-
-# Creazione di una coda 'notifiche'
-channel.queue_declare(queue='notifiche')
 
 
 @app.route('/get_loans', methods=['GET'])
@@ -47,35 +40,27 @@ def get_loans():
 
 @app.route('/update_loan/<int:id>', methods=['PUT'])
 def update_loan(id):
-    logging.info(f'PUT /update_loan/{id}')
     try:
+        # Trova il prestito nel database
         loan = Prestito.query.get(id)
+        # Se il prestito non esiste, restituisci un errore
         if loan is None:
             return jsonify({"error": "Prestito non trovato"}), 404
+        # Ottieni i dati dal corpo della richiesta
         data = request.get_json()
+        # Aggiorna i campi del prestito
         if 'IdCliente' in data:
             loan.IdCliente = data['IdCliente']
         if 'IdLibro' in data:
             loan.IdLibro = data['IdLibro']
-        if 'disponibile' in data:
-            loan.disponibile = data['disponibile']
-            if loan.disponibile:
-                notification_message = f'Il prestito {id} è ora disponibile'
-                channel.basic_publish(exchange='', routing_key='notifiche', body=notification_message)
-                print("Messaggio di notifica inviato")
+        # Salva le modifiche nel database
         db.session.commit()
+        # Restituisci un messaggio di successo
         return jsonify({"message": "Prestito aggiornato"}), 200
     except Exception as e:
-        logging.error(f"An error occurred: {str(e)}")
+        print(f"An error occurred: {str(e)}")  # Stampa l'errore nel log
         return jsonify({"error": str(e)}), 500
-    finally:
-        try:
-            if connection and connection.is_open:
-                connection.close()
-                print("Connessione RabbitMQ chiusa con successo")
-        except Exception as e:
-            print(f"Errore durante la chiusura di RabbitMQ: {str(e)}")
-
+    
 @app.route('/add', methods=['POST'])
 def aggiungi_prestito_verificato():
     logging.info('POST /add')
