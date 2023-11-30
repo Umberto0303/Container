@@ -38,6 +38,14 @@ def get_loans():
         logging.info(f'Loan data: {loan_data}')
     return jsonify(loan_list), 200
 
+#eibis
+
+
+#wdqfa
+
+
+
+
 @app.route('/update_loan/<int:id>', methods=['PUT'])
 def update_loan(id):
     try:
@@ -86,6 +94,7 @@ def aggiungi_prestito_verificato():
         return jsonify({"error": str(e)}), 500
     
 
+#
 @app.route('/get_loan/<int:id>', methods=['GET'])
 def get_loan(id):
     logging.info(f'GET /get_loan/{id}')
